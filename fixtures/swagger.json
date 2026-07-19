@@ -1,0 +1,149 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Week 4 - 健身房 Admin 登入系統",
+    "version": "1.0.0",
+    "description": "Middleware 深入 + JWT 鋪底：管理員註冊 / 登入 / 取得自己資料"
+  },
+  "servers": [
+    { "url": "http://localhost:3000", "description": "本機開發" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "email": { "type": "string", "format": "email", "example": "leo@gym.com" }
+        }
+      },
+      "RegisterBody": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "example": "amy@gym.com" },
+          "password": { "type": "string", "example": "1q2w3e4r" }
+        }
+      },
+      "LoginBody": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "example": "leo@gym.com" },
+          "password": { "type": "string", "example": "1q2w3e4r" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "false" },
+          "message": { "type": "string", "example": "錯誤訊息" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "註冊管理員",
+        "description": "密碼會用 bcrypt hash 後存進假 DB（in-memory users array）",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterBody" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "註冊成功",
+            "content": {
+              "application/json": {
+                "example": { "status": "success", "message": "註冊成功" }
+              }
+            }
+          },
+          "400": {
+            "description": "缺欄位或 email 已存在",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "登入",
+        "description": "驗證帳密後簽 JWT token 回傳（expiresIn: 30d）",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "登入成功",
+            "content": {
+              "application/json": {
+                "example": { "status": "success", "token": "eyJhbGciOiJIUzI1NiIs..." }
+              }
+            }
+          },
+          "401": {
+            "description": "帳號或密碼錯誤",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "拿自己的資料（需要 token）",
+        "description": "要在 Authorization header 帶 `Bearer <token>`。verifyToken 守門員會驗 token、把 user 塞進 req.user。",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "成功。`user` 欄位為 JWT decoded payload（包含 `id`、`email`，以及 JWT 自動帶入的 `iat` 簽發時間與 `exp` 過期時間）",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "user": { "id": 1, "email": "leo@gym.com", "iat": 1719993600, "exp": 1722585600 }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登入或 token 無效",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
